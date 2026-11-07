@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>豆知識クイズ対決</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:#fff7ec;color:#333;display:flex;justify-content:center}
+#app{width:100%;max-width:440px;padding:20px 16px}
+h1{font-size:22px;text-align:center;margin:8px 0 18px}
+button{width:100%;padding:14px;margin:6px 0;font-size:17px;border:0;border-radius:12px;background:#ff8a3d;color:#fff;font-weight:bold}
+button.sub{background:#4a90d9}
+button.choice{background:#fff;color:#333;border:2px solid #ddd;text-align:left}
+button:disabled{opacity:.45}
+input{width:100%;padding:12px;font-size:20px;text-align:center;border:2px solid #ddd;border-radius:12px;margin:6px 0}
+.card{background:#fff;border-radius:14px;padding:16px;margin:10px 0;box-shadow:0 2px 6px #0001}
+.q{font-size:22px;font-weight:bold;margin:8px 0 12px}
+.badge{display:inline-block;padding:2px 10px;border-radius:10px;background:#eee;font-size:13px}
+.score{display:flex;justify-content:space-around;font-size:18px;font-weight:bold}
+.msg{text-align:center;font-size:18px;min-height:28px;margin:8px 0}
+.code{font-size:40px;letter-spacing:8px;text-align:center;font-weight:bold}
+small{color:#888}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+if(typeof Peer === "undefined"){
+  document.getElementById("app").innerHTML = '<h1>🌏 豆知識クイズ対決</h1><div class="card">PeerJSを読み込めていない。ネット接続を確認し、GitHub Pagesなど自分のURLで開き直すこと。</div>';
+  throw new Error("PeerJS not loaded");
+}
+
+const QS = [
+  {lang:"ja", q:"日本で一番面積が小さい都道府県は？", c:["香川県", "東京都", "大阪府", "沖縄県"], a:0},
+  {lang:"ja", q:"日本で一番人口が少ない都道府県は？", c:["島根県", "鳥取県", "高知県", "福井県"], a:1},
+  {lang:"ja", q:"日本で一番長い川は？", c:["信濃川", "木曽川", "石狩川", "利根川"], a:0},
+  {lang:"ja", q:"日本の国鳥は？", c:["タカ", "スズメ", "キジ", "ツル"], a:2},
+  {lang:"ja", q:"一円玉の素材は？", c:["銅", "ステンレス", "アルミニウム", "ニッケル"], a:2},
+  {lang:"ja", q:"一円玉の重さは？", c:["5グラム", "2グラム", "0.5グラム", "1グラム"], a:3},
+  {lang:"ja", q:"十円玉の主な素材は？", c:["アルミニウム", "青銅（銅が主成分）", "ステンレス", "金"], a:1},
+  {lang:"ja", q:"日本の硬貨で一番直径が大きいのは？", c:["百円玉", "十円玉", "五十円玉", "五百円玉"], a:3},
+  {lang:"ja", q:"穴が開いている硬貨の組み合わせは？", c:["一円玉と十円玉", "百円玉と五百円玉", "十円玉と五十円玉", "五円玉と五十円玉"], a:3},
+  {lang:"ja", q:"江戸時代に「天下の台所」と呼ばれた都市は？", c:["名古屋", "大阪", "江戸", "京都"], a:1},
+  {lang:"ja", q:"大阪のエスカレーターで、一般的に立ち止まるのは？", c:["右側", "真ん中", "左側", "決まりはない"], a:0},
+  {lang:"ja", q:"通天閣がある大阪のエリアは？", c:["天満", "新世界", "難波", "梅田"], a:1},
+  {lang:"ja", q:"日本一高いタワーは？", c:["京都タワー", "東京スカイツリー", "東京タワー", "通天閣"], a:1},
+  {lang:"ja", q:"スカイツリーの高さ634mの語呂合わせは？", c:["薩摩", "出雲", "大和", "武蔵（むさし）"], a:3},
+  {lang:"ja", q:"東京タワーの高さは？", c:["300m", "333m", "350m", "634m"], a:1},
+  {lang:"ja", q:"日本で一番多い苗字は？", c:["高橋", "佐藤", "鈴木", "田中"], a:1},
+  {lang:"ja", q:"お寿司屋さんで「あがり」とは？", c:["醤油", "しょうが", "お茶", "わさび"], a:2},
+  {lang:"ja", q:"お寿司屋さんで「むらさき」とは？", c:["わさび", "ガリ", "お茶", "醤油"], a:3},
+  {lang:"ja", q:"日本で最初に世界遺産に登録された場所に含まれるのは？", c:["富士山", "法隆寺", "金閣寺", "厳島神社"], a:1},
+  {lang:"ja", q:"姫路城の別名は？", c:["黒鷺城", "白虎城", "金鶏城", "白鷺城"], a:3},
+  {lang:"ja", q:"日本標準時の基準になっている兵庫県の市は？", c:["西宮市", "姫路市", "明石市", "神戸市"], a:2},
+  {lang:"ja", q:"日本最東端の島は？", c:["南鳥島", "与那国島", "択捉島", "沖ノ鳥島"], a:0},
+  {lang:"ja", q:"日本最西端の島は？", c:["石垣島", "西表島", "与那国島", "宮古島"], a:2},
+  {lang:"ja", q:"富士山の標高は？", c:["4000m", "3776m", "3500m", "3900m"], a:1},
+  {lang:"ja", q:"日本で一番深い湖は？", c:["十和田湖", "田沢湖", "琵琶湖", "支笏湖"], a:1},
+  {lang:"ja", q:"日本で2番目に高い山は？", c:["槍ヶ岳", "剱岳", "北岳", "白山"], a:2},
+  {lang:"ja", q:"一般に日本の国技と呼ばれるのは？", c:["野球", "相撲", "剣道", "柔道"], a:1},
+  {lang:"ja", q:"力士が土俵にまくものは？", c:["米", "砂糖", "水", "塩"], a:3},
+  {lang:"ja", q:"日本最古の歴史書とされるのは？", c:["日本書紀", "万葉集", "古事記", "源氏物語"], a:2},
+  {lang:"ja", q:"『源氏物語』の作者は？", c:["清少納言", "紫式部", "和泉式部", "樋口一葉"], a:1},
+  {lang:"ja", q:"『枕草子』の作者は？", c:["清少納言", "小野小町", "与謝野晶子", "紫式部"], a:0},
+  {lang:"ja", q:"日本で一番人口が多い都道府県は？", c:["愛知県", "神奈川県", "大阪府", "東京都"], a:3},
+  {lang:"ja", q:"日本で一番面積が大きい都道府県は？", c:["福島県", "長野県", "北海道", "岩手県"], a:2},
+  {lang:"ja", q:"日本の国土のうち山地はおよそどれくらい？", c:["約3割", "約9割", "約7割", "約5割"], a:2},
+  {lang:"ja", q:"最初に開業した新幹線の開業年は？", c:["1972年", "1964年", "1985年", "1954年"], a:1},
+  {lang:"ja", q:"札幌で特に有名なラーメンは？", c:["豚骨ラーメン", "塩ラーメン", "魚介つけ麺", "味噌ラーメン"], a:3},
+  {lang:"ja", q:"博多ラーメンのスープは？", c:["味噌", "豚骨", "醤油", "塩"], a:1},
+  {lang:"ja", q:"日本で人口が一番多い市は？", c:["横浜市", "札幌市", "大阪市", "名古屋市"], a:0},
+  {lang:"ja", q:"関西弁「ほかす」の意味は？", c:["置く", "拾う", "隠す", "捨てる"], a:3},
+  {lang:"ja", q:"関西弁「さら」の意味は？", c:["安い", "新品", "汚い", "古い"], a:1},
+  {lang:"ja", q:"関西弁「あかん」の意味は？", c:["きれい", "いい", "おいしい", "だめ"], a:3},
+  {lang:"ja", q:"関西弁「ほんま」の意味は？", c:["本当", "たぶん", "絶対ない", "少し"], a:0},
+  {lang:"ja", q:"関西弁「かなわん」の意味は？", c:["困る・たまらない", "きれい", "簡単", "うれしい"], a:0},
+  {lang:"ja", q:"関西弁「どんくさい」の意味は？", c:["うるさい", "動きが鈍い", "かわいい", "賢い"], a:1},
+  {lang:"ja", q:"「はんなり」は主にどこの言葉？", c:["神戸", "京都", "奈良", "大阪"], a:1},
+  {lang:"ja", q:"「551蓬莱」の名物は？", c:["カステラ", "豚まん", "シュウマイ", "餃子"], a:1},
+  {lang:"ja", q:"串カツ店の有名なルールは？", c:["一人一本まで", "ソースの二度づけ禁止", "立って食べる", "串を持ち帰る"], a:1},
+  {lang:"ja", q:"道頓堀にある有名な看板は？", c:["赤いキツネ", "グリコのランナー", "ポッキー", "金のシャチ"], a:1},
+  {lang:"ja", q:"節分に食べる風習が関西から広まった巻き寿司は？", c:["ちらし寿司", "稲荷寿司", "恵方巻", "押し寿司"], a:2},
+  {lang:"zh", q:"台灣最高的山是？", c:["雪山", "阿里山", "合歡山", "玉山"], a:3},
+  {lang:"zh", q:"台灣最大的湖是？", c:["日月潭", "鯉魚潭", "碧潭", "澄清湖"], a:0},
+  {lang:"zh", q:"「福爾摩沙」是什麼意思？", c:["美しい島", "太陽の島", "黄金の島", "龍の島"], a:0},
+  {lang:"zh", q:"台灣的國花是？", c:["櫻花", "梅花", "蓮花", "牡丹"], a:1},
+  {lang:"zh", q:"元宵節常吃的是？", c:["粽子", "月餅", "年糕", "湯圓"], a:3},
+  {lang:"zh", q:"端午節常吃的是？", c:["湯圓", "粽子", "月餅", "年糕"], a:1},
+  {lang:"zh", q:"「士林夜市」在哪個城市？", c:["高雄", "台南", "台北", "台中"], a:2},
+  {lang:"zh", q:"「六合夜市」在哪個城市？", c:["台中", "台北", "花蓮", "高雄"], a:3},
+  {lang:"zh", q:"「滷肉飯」的滷肉是用什麼肉？", c:["雞肉", "豬肉", "牛肉", "魚肉"], a:1},
+  {lang:"zh", q:"「蚵仔煎」的蚵仔是什麼？", c:["あさり", "ホタテ", "エビ", "牡蠣"], a:3},
+  {lang:"zh", q:"「鳳梨酥」的鳳梨是？", c:["バナナ", "パイナップル", "みかん", "マンゴー"], a:1},
+  {lang:"zh", q:"「木瓜牛奶」的木瓜是？", c:["スイカ", "柿", "メロン", "パパイヤ"], a:3},
+  {lang:"zh", q:"「悠遊卡」是什麼？", c:["パスポート", "交通系ICカード", "クレジットカード", "映画の会員証"], a:1},
+  {lang:"zh", q:"台灣的「高鐵」類似日本的什麼？", c:["地下鉄", "在来線", "路線バス", "新幹線"], a:3},
+  {lang:"zh", q:"台灣的報警電話是幾號？", c:["110", "119", "911", "112"], a:0},
+  {lang:"zh", q:"台灣一般家庭的電壓是？", c:["100V", "220V", "240V", "110V"], a:3},
+  {lang:"zh", q:"台灣的國際電話區號是？", c:["+82", "+81", "+886", "+86"], a:2},
+  {lang:"zh", q:"「綠島」和「蘭嶼」在台灣的哪一側？", c:["西側", "南側", "東側", "北側"], a:2},
+  {lang:"zh", q:"台灣最南端的地標是？", c:["太魯閣", "九份", "淡水", "鵝鑾鼻"], a:3},
+  {lang:"zh", q:"「太魯閣」以什麼地形聞名？", c:["砂漠", "サンゴ礁", "氷河", "大理石の峡谷"], a:3},
+  {lang:"zh", q:"「九份」以什麼聞名？", c:["温泉の湖", "山の斜面の老街と夜景", "砂浜", "高層ビル群"], a:1},
+  {lang:"zh", q:"「淡水」位在哪裡？", c:["基隆市", "台北市", "新北市", "桃園市"], a:2},
+  {lang:"zh", q:"台灣的總統府在哪個城市？", c:["高雄", "台南", "台中", "台北"], a:3},
+  {lang:"zh", q:"故宮博物院有名的展品是？", c:["モナ・リザ", "翠玉白菜", "兵馬俑", "金閣"], a:1},
+  {lang:"zh", q:"「機車」是什麼？", c:["自転車", "バス", "電車", "バイク"], a:3},
+  {lang:"zh", q:"「垃圾」是什麼意思？", c:["手紙", "荷物", "お金", "ゴミ"], a:3},
+  {lang:"zh", q:"「大丈夫」在古代中文原本的意思是？", c:["立派な男", "お医者さん", "問題ない", "背の高い人"], a:0},
+  {lang:"zh", q:"「老婆」是什麼意思？", c:["母", "妻", "おばあさん", "先生"], a:1},
+  {lang:"zh", q:"「娘」在中文是什麼意思？", c:["姉", "おばあさん", "娘", "お母さん"], a:3},
+  {lang:"zh", q:"「勉強」在中文是什麼意思？", c:["熱心に学ぶ", "運動する", "無理がある・しぶしぶ", "休む"], a:2},
+  {lang:"zh", q:"「汽車」是什麼意思？", c:["船", "電車", "蒸気機関車", "自動車"], a:3},
+  {lang:"zh", q:"「爺爺」是什麼意思？", c:["おじさん", "先生", "父方の祖父", "お父さん"], a:2},
+  {lang:"zh", q:"「湯」在中文是什麼意思？", c:["お風呂", "お湯", "スープ", "温泉"], a:2},
+  {lang:"zh", q:"「走」在中文是什麼意思？", c:["歩く", "飛ぶ", "泳ぐ", "走る"], a:0},
+  {lang:"zh", q:"「便宜」在中文是什麼意思？", c:["高い", "便利", "安い", "新しい"], a:2},
+  {lang:"zh", q:"「麵包」是什麼？", c:["パン", "麺", "餅", "ケーキ"], a:0},
+  {lang:"zh", q:"「冰箱」是什麼？", c:["冷蔵庫", "掃除機", "洗濯機", "暖房器具"], a:0},
+  {lang:"zh", q:"「早安」是什麼意思？", c:["さようなら", "ありがとう", "おはよう", "こんばんは"], a:2},
+  {lang:"zh", q:"「不用客氣」是什麼意思？", c:["どういたしまして", "おいしい", "いくらですか", "ごめんなさい"], a:0},
+  {lang:"zh", q:"「小心」是什麼意思？", c:["悲しい", "親切", "気をつけて", "小さい心"], a:2},
+  {lang:"zh", q:"「加油」是什麼意思？（鼓勵別人時）", c:["ごめんね", "がんばれ！", "ありがとう", "おやすみ"], a:1},
+  {lang:"zh", q:"「好玩」是什麼意思？", c:["こわい", "高い", "おいしい", "楽しい"], a:3},
+  {lang:"zh", q:"「外帶」是什麼意思？", c:["予約", "配達", "店内で食べる", "テイクアウト"], a:3},
+  {lang:"zh", q:"「內用」是什麼意思？", c:["予約", "持ち帰り", "店内で食べる", "配達"], a:2},
+  {lang:"zh", q:"手搖飲的「少冰」是什麼意思？", c:["氷少なめ", "氷なし", "氷多め", "砂糖少なめ"], a:0},
+  {lang:"zh", q:"手搖飲的「半糖」是什麼意思？", c:["砂糖半分", "砂糖なし", "氷半分", "砂糖2倍"], a:0},
+  {lang:"zh", q:"「去冰」是什麼意思？", c:["氷多め", "温かい", "氷なし", "砂糖なし"], a:2},
+  {lang:"zh", q:"「我愛你」是什麼意思？", c:["ありがとう", "愛してる", "おやすみ", "ごめん"], a:1},
+  {lang:"zh", q:"「我想你」是什麼意思？", c:["あなたに会いたい（恋しい）", "お腹がすいた", "忙しい", "眠い"], a:0},
+  {lang:"zh", q:"「你好可愛」是什麼意思？", c:["あなたは背が高い", "あなたはとてもかわいい", "あなたは怒っている", "あなたは忙しい"], a:1},
+  {lang:"zh", q:"「真的嗎」是什麼意思？", c:["本当？", "いつ？", "誰？", "どこ？"], a:0},
+];
+
+const QUESTIONS_PER_GAME = 20; // 1ゲームの出題数
+const LANG = {ja:"日本語", zh:"繁體中文"};
+const ROLE = {ja:"🇯🇵 壮吾", tw:"🇹🇼 彼女"};
+const PREFIX = "lqz-";
+const app = document.getElementById("app");
+let peer = null, conn = null, room = null, me = null, code = null, isHost = false, advTimer = null;
+
+function home(){
+  clearTimeout(advTimer);
+  if(peer){ try{peer.destroy()}catch(e){} }
+  peer = conn = room = me = code = null; isHost = false;
+  app.innerHTML = `<h1>🌏 豆知識クイズ対決</h1>
+  <div class="card"><b>部屋を作る</b>
+    <button onclick="create('ja')">🇯🇵 日本人として作る</button>
+    <button onclick="create('tw')">🇹🇼 台湾側として作る</button></div>
+  <div class="card"><b>部屋に入る</b>
+    <input id="cin" inputmode="numeric" maxlength="4" placeholder="4桁のコード">
+    <button class="sub" onclick="join()">参加する</button></div>`;
+}
+
+// ---------- ホスト側（判定と進行はすべてホストが行う） ----------
+function create(role){
+  isHost = true; me = role;
+  code = String(Math.floor(1000 + Math.random()*9000));
+  peer = new Peer(PREFIX + code);
+  peer.on("open", () => {
+    room = {host:role, status:"wait", scores:{ja:0,tw:0}, joined:{[role]:true}};
+    render();
+  });
+  peer.on("connection", c => {
+    if(conn && conn.open){ c.close(); return; }
+    conn = c;
+    c.on("open", () => { room.joined[me === "ja" ? "tw" : "ja"] = true; startGame(); });
+    c.on("data", d => { if(d && d.type === "answer") hostAnswer(me === "ja" ? "tw" : "ja", d.idx); });
+    c.on("close", () => { alert("相手との接続が切れた"); home(); });
+  });
+  peer.on("error", e => {
+    if(e.type === "unavailable-id"){ peer.destroy(); create(role); }
+    else { alert("接続エラー: " + e.type); home(); }
+  });
+}
+
+function startGame(){
+  const order = QS.map((_,i)=>i).sort(()=>Math.random()-.5).slice(0, QUESTIONS_PER_GAME);
+  Object.assign(room, {status:"play", order, i:0, state:"open", winner:null, wrong:{}});
+  push();
+}
+
+function hostAnswer(who, idx){
+  const r = room;
+  if(!r || r.status !== "play" || r.state !== "open" || r.wrong[who]) return;
+  const q = QS[r.order[r.i]];
+  if(idx === q.a){
+    r.state = "won"; r.winner = who;
+    r.scores[who] += (q.lang === "ja" && who === "ja") ? 20 : 10; // 日本語問題は壮吾が2倍
+  } else {
+    r.wrong[who] = true;
+    if(r.wrong.ja && r.wrong.tw) r.state = "none";
+  }
+  push();
+  if(r.state !== "open"){
+    clearTimeout(advTimer);
+    advTimer = setTimeout(() => {
+      if(r.i + 1 >= r.order.length) r.status = "end";
+      else { r.i++; r.state = "open"; r.wrong = {}; r.winner = null; }
+      push();
+    }, 2200);
+  }
+}
+
+function push(){
+  render();
+  if(conn && conn.open) conn.send({type:"state", room});
+}
+
+// ---------- ゲスト側 ----------
+function join(){
+  const c = document.getElementById("cin").value.trim();
+  if(!/^\d{4}$/.test(c)) return alert("4桁のコードを入れてほしい");
+  code = c; isHost = false;
+  app.innerHTML = `<h1>🌏 豆知識クイズ対決</h1><div class="card msg">接続中…</div>`;
+  peer = new Peer();
+  peer.on("open", () => {
+    conn = peer.connect(PREFIX + c, {reliable:true});
+    const t = setTimeout(() => { alert("繋がらなかった。コードと相手の画面を確認してほしい"); home(); }, 10000);
+    conn.on("open", () => clearTimeout(t));
+    conn.on("data", d => {
+      if(d && d.type === "state"){
+        room = d.room;
+        if(!me) me = room.host === "ja" ? "tw" : "ja";
+        render();
+      }
+    });
+    conn.on("close", () => { alert("相手との接続が切れた"); home(); });
+  });
+  peer.on("error", e => {
+    alert(e.type === "peer-unavailable" ? "その部屋は見つからない" : "接続エラー: " + e.type);
+    home();
+  });
+}
+
+function answer(idx){
+  if(isHost) hostAnswer(me, idx);
+  else if(conn && conn.open) conn.send({type:"answer", idx});
+}
+
+// ---------- 画面 ----------
+function render(){
+  if(!room) return;
+  const head = `<h1>🌏 豆知識クイズ対決</h1>`;
+  if(room.status === "wait"){
+    app.innerHTML = head + `<div class="card"><div class="code">${code}</div>
+      <p style="text-align:center">相手にこのコードを送って待つ<br><small>あなたは ${ROLE[me]}。この画面は開いたままにすること</small></p></div>`;
+    return;
+  }
+  const sc = `<div class="card score"><span>${ROLE.ja}　${room.scores.ja}</span><span>${ROLE.tw}　${room.scores.tw}</span></div>`;
+  if(room.status === "end"){
+    const {ja,tw} = room.scores;
+    const res = ja === tw ? "引き分け！" : (ja > tw ? "🇯🇵 壮吾の勝ち！" : "🇹🇼 彼女の勝ち！");
+    app.innerHTML = head + sc + `<div class="msg">${res}</div><button onclick="home()">最初に戻る</button>`;
+    return;
+  }
+  const q = QS[room.order[room.i]];
+  const open = room.state === "open";
+  const mine = room.wrong[me];
+  let msg = "";
+  if(room.state === "won") msg = room.winner === me ? "⭕ 正解！" : "相手が先に正解…";
+  else if(room.state === "none") msg = "二人とも不正解";
+  else if(mine) msg = "❌ 不正解。相手の回答を待つ";
+  const btns = q.c.map((t,i)=>`<button class="choice" ${open && !mine ? "" : "disabled"} onclick="answer(${i})">${t}</button>`).join("");
+  app.innerHTML = head + sc + `<div class="card"><small>第${room.i+1}問 / ${room.order.length}　あなたは ${ROLE[me]}</small><br>
+    <span class="badge">${LANG[q.lang]}</span><div class="q">${q.q}</div>${btns}</div><div class="msg">${msg}</div>`
+    + (open ? "" : `<div class="msg"><small>正解は「${q.c[q.a]}」</small></div>`);
+}
+
+home();
+</script>
+</body>
+</html>
