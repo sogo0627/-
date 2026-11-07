@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>言語クイズ対決</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,sans-serif;background:#fff7ec;color:#333;display:flex;justify-content:center}
+#app{width:100%;max-width:440px;padding:20px 16px}
+h1{font-size:22px;text-align:center;margin:8px 0 18px}
+button{width:100%;padding:14px;margin:6px 0;font-size:17px;border:0;border-radius:12px;background:#ff8a3d;color:#fff;font-weight:bold}
+button.sub{background:#4a90d9}
+button.choice{background:#fff;color:#333;border:2px solid #ddd;text-align:left}
+button:disabled{opacity:.45}
+input{width:100%;padding:12px;font-size:20px;text-align:center;border:2px solid #ddd;border-radius:12px;margin:6px 0}
+.card{background:#fff;border-radius:14px;padding:16px;margin:10px 0;box-shadow:0 2px 6px #0001}
+.q{font-size:22px;font-weight:bold;margin:8px 0 12px}
+.badge{display:inline-block;padding:2px 10px;border-radius:10px;background:#eee;font-size:13px}
+.score{display:flex;justify-content:space-around;font-size:18px;font-weight:bold}
+.msg{text-align:center;font-size:18px;min-height:28px;margin:8px 0}
+.code{font-size:40px;letter-spacing:8px;text-align:center;font-weight:bold}
+small{color:#888}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+if(typeof Peer === "undefined"){
+  document.getElementById("app").innerHTML = '<h1>🌏 言語クイズ対決</h1><div class="card">PeerJSを読み込めていない。ネット接続を確認し、GitHub Pagesなど自分のURLで開き直すこと。</div>';
+  throw new Error("PeerJS not loaded");
+}
+
+const QS = [
+  {lang:"ja", q:"日本一高い山は？", c:["御嶽山", "北岳", "富士山", "穂高岳"], a:2},
+  {lang:"ja", q:"関西弁で「ありがとう」は？", c:["ほなね", "めっちゃ", "ちゃうわ", "おおきに"], a:3},
+  {lang:"ja", q:"「ごっつい」の標準語に近いのは？", c:["小さい", "すごい", "暗い", "遅い"], a:1},
+  {lang:"ja", q:"大阪名物はどれ？", c:["もみじ饅頭", "ひつまぶし", "たこ焼き", "ずんだ餅"], a:2},
+  {lang:"ja", q:"日本一大きい湖は？", c:["霞ヶ浦", "琵琶湖", "浜名湖", "諏訪湖"], a:1},
+  {lang:"ja", q:"関西弁「なんでやねん」の意味は？", c:["さようなら", "おいしい", "どうして！（ツッコミ）", "ありがとう"], a:2},
+  {lang:"ja", q:"関西弁「しんどい」の意味は？", c:["うれしい", "寒い", "おいしい", "つらい・疲れた"], a:3},
+  {lang:"ja", q:"京都の金色の建物で有名なお寺は？", c:["法隆寺", "金閣寺", "東大寺", "清水寺"], a:1},
+  {lang:"ja", q:"日本の通貨単位は？", c:["ウォン", "元", "円", "ドル"], a:2},
+  {lang:"ja", q:"寿司の「ガリ」とは？", c:["わさび", "お茶", "醤油", "しょうがの甘酢漬け"], a:3},
+  {lang:"ja", q:"関西弁「めっちゃ」の意味は？", c:["たぶん", "とても", "少し", "まったく"], a:1},
+  {lang:"ja", q:"最初に開業した新幹線は？", c:["上越新幹線", "東北新幹線", "山陽新幹線", "東海道新幹線"], a:3},
+  {lang:"ja", q:"都道府県はいくつある？", c:["50", "45", "47", "43"], a:2},
+  {lang:"ja", q:"関西弁「いらち」とは？", c:["のんびりな人", "食いしん坊", "せっかちな人", "背が高い人"], a:2},
+  {lang:"ja", q:"大阪城を築いたのは？", c:["織田信長", "武田信玄", "徳川家康", "豊臣秀吉"], a:3},
+  {lang:"ja", q:"お好み焼きに欠かせない野菜は？", c:["キャベツ", "ごぼう", "れんこん", "だいこん"], a:0},
+  {lang:"ja", q:"日本の首都は？", c:["東京", "名古屋", "大阪", "京都"], a:0},
+  {lang:"ja", q:"北海道の道庁所在地は？", c:["小樽", "札幌", "函館", "旭川"], a:1},
+  {lang:"ja", q:"うどんで有名な県は？", c:["福井県", "香川県", "岐阜県", "秋田県"], a:1},
+  {lang:"ja", q:"関西弁「おもろい」の意味は？", c:["まずい", "こわい", "たかい", "おもしろい"], a:3},
+  {lang:"zh", q:"台灣最高的山是？", c:["玉山", "雪山", "阿里山", "合歡山"], a:0},
+  {lang:"zh", q:"「謝謝」是什麼意思？", c:["ごめんなさい", "ありがとう", "さようなら", "おはよう"], a:1},
+  {lang:"zh", q:"「手機」是什麼？", c:["パソコン", "時計", "財布", "スマホ"], a:3},
+  {lang:"zh", q:"「珍珠奶茶」裡的珍珠是？", c:["ゼリー", "タピオカ", "あずき", "真珠"], a:1},
+  {lang:"zh", q:"台灣的首都是？", c:["台中", "台北", "高雄", "台南"], a:1},
+  {lang:"zh", q:"「電腦」是什麼？", c:["冷蔵庫", "電気", "テレビ", "パソコン"], a:3},
+  {lang:"zh", q:"「你好」是什麼意思？", c:["こんにちは", "ありがとう", "いくら", "おやすみ"], a:0},
+  {lang:"zh", q:"「好吃」是什麼意思？", c:["おいしい", "うるさい", "つかれた", "こわい"], a:0},
+  {lang:"zh", q:"「捷運」是什麼？", c:["飛行機", "タクシー", "船", "地下鉄・MRT"], a:3},
+  {lang:"zh", q:"「便利商店」是什麼？", c:["デパート", "コンビニ", "薬局", "市場"], a:1},
+  {lang:"zh", q:"「多少錢」是在問什麼？", c:["誰ですか", "何時ですか", "どこですか", "いくらですか"], a:3},
+  {lang:"zh", q:"「對不起」是什麼意思？", c:["ごめんなさい", "おめでとう", "ありがとう", "いただきます"], a:0},
+  {lang:"zh", q:"「冰」的意思是？", c:["雨", "火", "氷・冷たい", "風"], a:2},
+  {lang:"zh", q:"台灣的貨幣單位是？", c:["日圓", "人民幣", "新臺幣", "美元"], a:2},
+  {lang:"zh", q:"「夜市」是什麼？", c:["夜行バス", "夜景", "夜の屋台街", "夜勤"], a:2},
+  {lang:"zh", q:"「火車」是什麼？", c:["火事", "汽船", "電車・列車", "消防車"], a:2},
+  {lang:"zh", q:"「大學」是什麼？", c:["大学", "高校", "小学校", "幼稚園"], a:0},
+  {lang:"zh", q:"「牛肉麵」是什麼？", c:["牛丼", "牛乳のデザート", "焼肉", "牛肉入りの麺料理"], a:3},
+  {lang:"zh", q:"「再見」是什麼意思？", c:["さようなら", "いただきます", "はじめまして", "おつかれさま"], a:0},
+  {lang:"zh", q:"「朋友」是什麼意思？", c:["友達", "家族", "犬", "先生"], a:0},
+  {lang:"en", q:"How many days are in a week?", c:["7", "6", "5", "8"], a:0},
+  {lang:"en", q:"What does \"apple\" mean?", c:["ぶどう", "もも", "りんご", "みかん"], a:2},
+  {lang:"en", q:"The opposite of \"hot\" is?", c:["fast", "soft", "cold", "warm"], a:2},
+  {lang:"en", q:"Which one is an animal?", c:["river", "window", "rabbit", "table"], a:2},
+  {lang:"en", q:"What color is a clear sky?", c:["blue", "black", "brown", "red"], a:0},
+  {lang:"en", q:"What does \"thank you\" mean?", c:["おはよう", "さようなら", "ごめん", "ありがとう"], a:3},
+  {lang:"en", q:"What is 3 + 4?", c:["7", "6", "9", "8"], a:0},
+  {lang:"en", q:"Which one is a fruit?", c:["potato", "banana", "onion", "carrot"], a:1},
+  {lang:"en", q:"What does \"book\" mean?", c:["本", "鍵", "傘", "靴"], a:0},
+  {lang:"en", q:"What does \"water\" mean?", c:["水", "土", "火", "木"], a:0},
+  {lang:"en", q:"The opposite of \"big\" is?", c:["heavy", "long", "tall", "small"], a:3},
+  {lang:"en", q:"Which one is a month?", c:["Monday", "Summer", "Morning", "November"], a:3},
+  {lang:"en", q:"What does \"school\" mean?", c:["銀行", "学校", "駅", "病院"], a:1},
+  {lang:"en", q:"How many letters are in \"cat\"?", c:["4", "5", "2", "3"], a:3},
+  {lang:"en", q:"Which day comes after Thursday?", c:["Wednesday", "Sunday", "Tuesday", "Friday"], a:3},
+  {lang:"en", q:"Which one is a color?", c:["pencil", "bread", "chair", "green"], a:3},
+  {lang:"en", q:"What does \"eat\" mean?", c:["走る", "飲む", "寝る", "食べる"], a:3},
+  {lang:"en", q:"What does \"train\" mean?", c:["電車", "船", "自転車", "飛行機"], a:0},
+  {lang:"en", q:"The plural of \"child\" is?", c:["children", "childs", "childen", "childes"], a:0},
+  {lang:"en", q:"What does \"friend\" mean?", c:["先生", "家族", "友達", "隣人"], a:2},
+];
+
+const QUESTIONS_PER_GAME = 15; // 1ゲームの出題数
+const LANG = {ja:"日本語", zh:"繁體中文", en:"English"};
+const ROLE = {ja:"🇯🇵 壮吾", tw:"🇹🇼 彼女"};
+const PREFIX = "lqz-";
+const app = document.getElementById("app");
+let peer = null, conn = null, room = null, me = null, code = null, isHost = false, advTimer = null;
+
+function home(){
+  clearTimeout(advTimer);
+  if(peer){ try{peer.destroy()}catch(e){} }
+  peer = conn = room = me = code = null; isHost = false;
+  app.innerHTML = `<h1>🌏 言語クイズ対決</h1>
+  <div class="card"><b>部屋を作る</b>
+    <button onclick="create('ja')">🇯🇵 日本人として作る</button>
+    <button onclick="create('tw')">🇹🇼 台湾側として作る</button></div>
+  <div class="card"><b>部屋に入る</b>
+    <input id="cin" inputmode="numeric" maxlength="4" placeholder="4桁のコード">
+    <button class="sub" onclick="join()">参加する</button></div>`;
+}
+
+// ---------- ホスト側（判定と進行はすべてホストが行う） ----------
+function create(role){
+  isHost = true; me = role;
+  code = String(Math.floor(1000 + Math.random()*9000));
+  peer = new Peer(PREFIX + code);
+  peer.on("open", () => {
+    room = {host:role, status:"wait", scores:{ja:0,tw:0}, joined:{[role]:true}};
+    render();
+  });
+  peer.on("connection", c => {
+    if(conn && conn.open){ c.close(); return; }
+    conn = c;
+    c.on("open", () => { room.joined[me === "ja" ? "tw" : "ja"] = true; startGame(); });
+    c.on("data", d => { if(d && d.type === "answer") hostAnswer(me === "ja" ? "tw" : "ja", d.idx); });
+    c.on("close", () => { alert("相手との接続が切れた"); home(); });
+  });
+  peer.on("error", e => {
+    if(e.type === "unavailable-id"){ peer.destroy(); create(role); }
+    else { alert("接続エラー: " + e.type); home(); }
+  });
+}
+
+function startGame(){
+  const order = QS.map((_,i)=>i).sort(()=>Math.random()-.5).slice(0, QUESTIONS_PER_GAME);
+  Object.assign(room, {status:"play", order, i:0, state:"open", winner:null, wrong:{}});
+  push();
+}
+
+function hostAnswer(who, idx){
+  const r = room;
+  if(!r || r.status !== "play" || r.state !== "open" || r.wrong[who]) return;
+  const q = QS[r.order[r.i]];
+  if(idx === q.a){
+    r.state = "won"; r.winner = who;
+    r.scores[who] += (q.lang === "ja" && who === "ja") ? 20 : 10; // 日本語問題は壮吾が2倍
+  } else {
+    r.wrong[who] = true;
+    if(r.wrong.ja && r.wrong.tw) r.state = "none";
+  }
+  push();
+  if(r.state !== "open"){
+    clearTimeout(advTimer);
+    advTimer = setTimeout(() => {
+      if(r.i + 1 >= r.order.length) r.status = "end";
+      else { r.i++; r.state = "open"; r.wrong = {}; r.winner = null; }
+      push();
+    }, 2200);
+  }
+}
+
+function push(){
+  render();
+  if(conn && conn.open) conn.send({type:"state", room});
+}
+
+// ---------- ゲスト側 ----------
+function join(){
+  const c = document.getElementById("cin").value.trim();
+  if(!/^\d{4}$/.test(c)) return alert("4桁のコードを入れてほしい");
+  code = c; isHost = false;
+  app.innerHTML = `<h1>🌏 言語クイズ対決</h1><div class="card msg">接続中…</div>`;
+  peer = new Peer();
+  peer.on("open", () => {
+    conn = peer.connect(PREFIX + c, {reliable:true});
+    const t = setTimeout(() => { alert("繋がらなかった。コードと相手の画面を確認してほしい"); home(); }, 10000);
+    conn.on("open", () => clearTimeout(t));
+    conn.on("data", d => {
+      if(d && d.type === "state"){
+        room = d.room;
+        if(!me) me = room.host === "ja" ? "tw" : "ja";
+        render();
+      }
+    });
+    conn.on("close", () => { alert("相手との接続が切れた"); home(); });
+  });
+  peer.on("error", e => {
+    alert(e.type === "peer-unavailable" ? "その部屋は見つからない" : "接続エラー: " + e.type);
+    home();
+  });
+}
+
+function answer(idx){
+  if(isHost) hostAnswer(me, idx);
+  else if(conn && conn.open) conn.send({type:"answer", idx});
+}
+
+// ---------- 画面 ----------
+function render(){
+  if(!room) return;
+  const head = `<h1>🌏 言語クイズ対決</h1>`;
+  if(room.status === "wait"){
+    app.innerHTML = head + `<div class="card"><div class="code">${code}</div>
+      <p style="text-align:center">相手にこのコードを送って待つ<br><small>あなたは ${ROLE[me]}。この画面は開いたままにすること</small></p></div>`;
+    return;
+  }
+  const sc = `<div class="card score"><span>${ROLE.ja}　${room.scores.ja}</span><span>${ROLE.tw}　${room.scores.tw}</span></div>`;
+  if(room.status === "end"){
+    const {ja,tw} = room.scores;
+    const res = ja === tw ? "引き分け！" : (ja > tw ? "🇯🇵 壮吾の勝ち！" : "🇹🇼 彼女の勝ち！");
+    app.innerHTML = head + sc + `<div class="msg">${res}</div><button onclick="home()">最初に戻る</button>`;
+    return;
+  }
+  const q = QS[room.order[room.i]];
+  const open = room.state === "open";
+  const mine = room.wrong[me];
+  let msg = "";
+  if(room.state === "won") msg = room.winner === me ? "⭕ 正解！" : "相手が先に正解…";
+  else if(room.state === "none") msg = "二人とも不正解";
+  else if(mine) msg = "❌ 不正解。相手の回答を待つ";
+  const btns = q.c.map((t,i)=>`<button class="choice" ${open && !mine ? "" : "disabled"} onclick="answer(${i})">${t}</button>`).join("");
+  app.innerHTML = head + sc + `<div class="card"><small>第${room.i+1}問 / ${room.order.length}　あなたは ${ROLE[me]}</small><br>
+    <span class="badge">${LANG[q.lang]}</span><div class="q">${q.q}</div>${btns}</div><div class="msg">${msg}</div>`
+    + (open ? "" : `<div class="msg"><small>正解は「${q.c[q.a]}」</small></div>`);
+}
+
+home();
+</script>
+</body>
+</html>
